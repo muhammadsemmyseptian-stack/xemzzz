@@ -12,6 +12,9 @@ jobs:
   build:
     name: Test and build debug APK
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - name: Checkout source
         uses: actions/checkout@v6
@@ -34,6 +37,31 @@ jobs:
           test -f app/build.gradle.kts
           test -f app/src/main/AndroidManifest.xml
           rm source.b64
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle.kts")
+          s = p.read_text()
+          debug_config = '''    create("debugConfig") {
+            storeFile = file("${rootDir}/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+          }
+          '''
+          if debug_config not in s:
+              raise SystemExit("Expected debugConfig signing block not found")
+          s = s.replace(debug_config, "")
+          debug_block = '''    debug {
+            // Do not remove or modify this signingConfig assignment. It is necessary for Android apps in
+            // AI Studio.
+            signingConfig = signingConfigs.getByName("debugConfig")
+          }
+          '''
+          if debug_block not in s:
+              raise SystemExit("Expected debug build signing block not found")
+          s = s.replace(debug_block, "")
+          p.write_text(s)
+          PY
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -42,11 +70,18 @@ jobs:
           java-version: '21'
 
       - name: Install Android SDK platform and build tools
-        env:
-          ANDROID_HOME: /usr/local/lib/android/sdk
+        shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager was not found under $ANDROID_HOME/cmdline-tools"
+            find "$ANDROID_HOME" -maxdepth 4 -type f -name sdkmanager -print || true
+            exit 1
+          fi
+          echo "Using SDK manager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" --install "platforms;android-36.1" "build-tools;36.0.0" "platform-tools"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
