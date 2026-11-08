@@ -37,6 +37,11 @@ jobs:
           test -f app/build.gradle.kts
           test -f app/src/main/AndroidManifest.xml
           rm source.b64
+          cat source-overrides-payload/part-01.b64 source-overrides-payload/part-02.b64 source-overrides-payload/part-03.b64 source-overrides-payload/part-04.b64 source-overrides-payload/part-05.b64 > source-overrides.b64
+          base64 --decode source-overrides.b64 > source-overrides.tar.gz
+          echo "a84c122ed68a11ce4a272f52b121295087b0c958c3912831c9ca8778cffbaeaa  source-overrides.tar.gz" | sha256sum -c -
+          tar -xzf source-overrides.tar.gz
+          rm source-overrides.b64 source-overrides.tar.gz
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
