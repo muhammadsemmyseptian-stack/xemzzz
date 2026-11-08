@@ -39,28 +39,15 @@ jobs:
           rm source.b64
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path("app/build.gradle.kts")
           s = p.read_text()
-          debug_config = '''    create("debugConfig") {
-            storeFile = file("${rootDir}/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-          }
-          '''
-          if debug_config not in s:
-              raise SystemExit("Expected debugConfig signing block not found")
-          s = s.replace(debug_config, "")
-          debug_block = '''    debug {
-            // Do not remove or modify this signingConfig assignment. It is necessary for Android apps in
-            // AI Studio.
-            signingConfig = signingConfigs.getByName("debugConfig")
-          }
-          '''
-          if debug_block not in s:
-              raise SystemExit("Expected debug build signing block not found")
-          s = s.replace(debug_block, "")
+          s, n1 = re.subn(r'(?ms)^[ \t]*create\("debugConfig"\)[ \t]*\{.*?^[ \t]{4}\}[ \t]*\n', "", s, count=1)
+          s, n2 = re.subn(r'(?ms)^    debug[ \t]*\{.*?^    \}[ \t]*\n', "", s, count=1)
+          if n1 != 1 or n2 != 1:
+              raise SystemExit(f"Expected one debug signing config and one debug build block; found {n1}, {n2}")
           p.write_text(s)
+          print("Removed custom debug signing; Gradle will use its standard debug keystore.")
           PY
 
       - name: Set up JDK 21
