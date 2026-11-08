@@ -37,24 +37,16 @@ jobs:
           test -f app/build.gradle.kts
           test -f app/src/main/AndroidManifest.xml
           rm source.b64
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p = Path("app/build.gradle.kts")
-          s = p.read_text()
-          s, n1 = re.subn(r'(?ms)^[ \t]*create\("debugConfig"\)[ \t]*\{.*?^[ \t]{4}\}[ \t]*\n', "", s, count=1)
-          s, n2 = re.subn(r'(?ms)^    debug[ \t]*\{.*?^    \}[ \t]*\n', "", s, count=1)
-          if n1 != 1 or n2 != 1:
-              raise SystemExit(f"Expected one debug signing config and one debug build block; found {n1}, {n2}")
-          p.write_text(s)
-          print("Removed custom debug signing; Gradle will use its standard debug keystore.")
-          PY
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
+
+      - name: Create debug keystore
+        run: |
+          keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Install Android SDK platform and build tools
         shell: bash
