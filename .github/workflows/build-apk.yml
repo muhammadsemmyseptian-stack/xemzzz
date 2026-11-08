@@ -36,16 +36,17 @@ jobs:
           rm source.b64
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Android SDK platform and build tools
-        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
