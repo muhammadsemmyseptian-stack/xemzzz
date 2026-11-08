@@ -1,0 +1,65 @@
+name: Build Semmy Gold APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Test and build debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Reassemble compressed Android source
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            head -c 6000 source-payload/part-01.txt
+            cat source-payload/part-02.txt
+            cat source-payload/part-03.txt
+            cat source-payload/part-04.txt
+            cat source-payload/part-05.txt
+            head -c 3000 source-payload/part-06.txt
+            cat source-payload/part-06-tail.txt
+          } > source.b64
+          echo "44c9d285b2d402585b271d5e52febefb7b01de13ccf378aa78c3e3bb05354d83  source.b64" | sha256sum -c -
+          base64 --decode source.b64 | tar -xz
+          test -f app/build.gradle.kts
+          test -f app/src/main/AndroidManifest.xml
+          rm source.b64
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform and build tools
+        run: sdkmanager --install "platforms;android-36.1" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.3.1'
+          cache-provider: basic
+
+      - name: Run unit tests and assemble APK
+        run: gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: semmy-gold-calculator-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
