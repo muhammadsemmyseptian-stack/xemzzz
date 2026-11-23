@@ -43,6 +43,16 @@ jobs:
           tar -xzf source-overrides.tar.gz
           rm source-overrides.b64 source-overrides.tar.gz
 
+      - name: Print Kotlin source for implementation review
+        shell: bash
+        run: |
+          set -euo pipefail
+          find app/src -type f -name '*.kt' -print | sort
+          while IFS= read -r file; do
+            echo "===== SOURCE FILE: $file ====="
+            cat "$file"
+          done < <(find app/src -type f -name '*.kt' -print | sort)
+
       - name: Upload unpacked source for implementation review
         uses: actions/upload-artifact@v4
         with:
